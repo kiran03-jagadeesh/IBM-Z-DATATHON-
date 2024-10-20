@@ -27,6 +27,185 @@ We implemented two machine learning models:
 | **K-Nearest Neighbors** | 33.73%         | 59.95%         |
 | **LSTM Model**        | 35.73%         | 68.95%         |
 
+## Python Code:
+```python
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.utils import to_categorical
+
+# Data Loading and Preprocessing
+def load_data(file_path):
+    df = pd.read_csv(file_path)
+    
+    # Extract relevant features
+    X = df[['abs_index']].values # Only include numeric 'abs_index' initially
+    
+    # Add radar data columns with handling for non-string values
+    for i in range(1, 5):
+        X = np.column_stack((X, df[f'unit1_radar{i}'].apply(lambda x: int(x.split('/')[-1].split('_')[1]) if isinstance(x, str) else 0)))
+    
+    # Convert timestamp to numeric representation (e.g., total seconds)
+    df['timestamp'] = pd.to_datetime(df['timestamp'], format='%H-%M-%S.%f').dt.time
+    df['timestamp'] = df['timestamp'].apply(lambda x: x.hour * 3600 + x.minute * 60 + x.second + x.microsecond / 1e6)  # Convert to total seconds
+
+    X = np.column_stack((X, df['timestamp'].values)) # Add the numeric timestamp
+    
+    y = df['unit1_overall-beam'].values
+    return X, y
+
+# Load the data
+X, y = load_data('scenario37.csv')
+
+
+# Split the data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Normalize the data
+scaler = MinMaxScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+
+# KNN Model
+def train_knn(X_train, y_train, n_neighbors=5):
+    knn = KNeighborsClassifier(n_neighbors=n_neighbors)
+    knn.fit(X_train, y_train)
+    return knn
+
+# Train KNN model
+knn_model = train_knn(X_train_scaled, y_train)
+
+# Evaluate KNN model
+y_pred_knn = knn_model.predict(X_test_scaled)
+print("KNN Model Performance:")
+print(confusion_matrix(y_test, y_pred_knn))
+print(classification_report(y_test, y_pred_knn))
+
+# LSTM Model
+def create_lstm_model(input_shape, num_classes):
+    model = Sequential([
+        LSTM(50, activation='relu', input_shape=(input_shape[1], 1)),
+        Dense(num_classes, activation='softmax')
+    ])
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+# Reshape data for LSTM (samples, time steps, features)
+X_train_lstm = X_train_scaled.reshape((X_train_scaled.shape[0], X_train_scaled.shape[1], 1))
+X_test_lstm = X_test_scaled.reshape((X_test_scaled.shape[0], X_test_scaled.shape[1], 1))
+
+# One-hot encode the target variable
+num_classes = len(np.unique(y))
+y_train_cat = to_categorical(y_train)
+y_test_cat = to_categorical(y_test)
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.utils import to_categorical
+
+# Data Loading and Preprocessing
+def load_data(file_path):
+    df = pd.read_csv(file_path)
+    
+    # Extract relevant features
+    X = df[['abs_index']].values # Only include numeric 'abs_index' initially
+    
+    # Add radar data columns with handling for non-string values
+    for i in range(1, 5):
+        X = np.column_stack((X, df[f'unit1_radar{i}'].apply(lambda x: int(x.split('/')[-1].split('_')[1]) if isinstance(x, str) else 0)))
+    
+    # Convert timestamp to numeric representation (e.g., total seconds)
+    df['timestamp'] = pd.to_datetime(df['timestamp'], format='%H-%M-%S.%f').dt.time
+    df['timestamp'] = df['timestamp'].apply(lambda x: x.hour * 3600 + x.minute * 60 + x.second + x.microsecond / 1e6)  # Convert to total seconds
+
+    X = np.column_stack((X, df['timestamp'].values)) # Add the numeric timestamp
+    
+    y = df['unit1_overall-beam'].values
+    return X, y
+
+# Load the data
+X, y = load_data('scenario37.csv')
+
+
+# Split the data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Normalize the data
+scaler = MinMaxScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+
+# KNN Model
+def train_knn(X_train, y_train, n_neighbors=5):
+    knn = KNeighborsClassifier(n_neighbors=n_neighbors)
+    knn.fit(X_train, y_train)
+    return knn
+
+# Train KNN model
+knn_model = train_knn(X_train_scaled, y_train)
+
+# Evaluate KNN model
+y_pred_knn = knn_model.predict(X_test_scaled)
+print("KNN Model Performance:")
+print(confusion_matrix(y_test, y_pred_knn))
+print(classification_report(y_test, y_pred_knn))
+
+# LSTM Model
+def create_lstm_model(input_shape, num_classes):
+    model = Sequential([
+        LSTM(50, activation='relu', input_shape=(input_shape[1], 1)),
+        Dense(num_classes, activation='softmax')
+    ])
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+# Reshape data for LSTM (samples, time steps, features)
+X_train_lstm = X_train_scaled.reshape((X_train_scaled.shape[0], X_train_scaled.shape[1], 1))
+X_test_lstm = X_test_scaled.reshape((X_test_scaled.shape[0], X_test_scaled.shape[1], 1))
+
+
+# One-hot encode the target variable
+num_classes = int(y.max() + 1)  # Convert num_classes to an integer using int()
+y_train_cat = to_categorical(y_train, num_classes=num_classes)  # Specify num_classes in to_categorical
+y_test_cat = to_categorical(y_test, num_classes=num_classes)  # Specify num_classes in to_categorical
+
+
+# Create and train LSTM model
+lstm_model = create_lstm_model(X_train_lstm.shape, num_classes)
+history = lstm_model.fit(X_train_lstm, y_train_cat, epochs=10, batch_size=32, validation_split=0.2)
+# Evaluate LSTM model
+y_pred_lstm = lstm_model.predict(X_test_lstm)
+y_pred_lstm_classes = np.argmax(y_pred_lstm, axis=1)
+y_test_classes = np.argmax(y_test_cat, axis=1)
+
+print("\nLSTM")
+y_pred_lstm_classes = np.argmax(y_pred_lstm, axis=1)
+y_test_classes = np.argmax(y_test_cat, axis=1)
+
+print("\nLSTM Model Performance:")
+print(confusion_matrix(y_test_classes, y_pred_lstm_classes))
+print(classification_report(y_test_classes, y_pred_lstm_classes))
+
+# Visualize training history (if needed)
+plt.figure(figsize=(12, 4))
+plt.subplot(1, 2, 1)
+```
+
 ## Results and Discussion
 
 - **KNN Model**: Classified beam indices based on proximity in the feature space. A scatter plot was generated to compare actual and predicted beam indices, and decision boundaries were displayed to show how the model separates different beam index classes.
